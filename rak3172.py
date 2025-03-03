@@ -29,6 +29,7 @@ class RAK3172:
         SEND_CONFIRMATION = 1
 
     def __init__(self, serial_port, network_mode, verbose=False, callback_events=None):
+        
         self.serial_port = serial_port
         self.verbose = verbose
         self.__callback_events = callback_events
@@ -227,6 +228,6 @@ class RAK3172:
     def status(self):
         status, _ = self.send_command("AT")
         if status == "OK":
-            return False
-        else:
             return True
+        else:
+            return False
