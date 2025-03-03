@@ -36,7 +36,7 @@ class RAK3172:
 
         # Open serial port
         try:
-            self.serial = serial.serial_for_url(serial_port, 115200)
+            self.serial = serial.Serial(serial_port, 115200, timeout=1)
         except serial.SerialException as e:
             sys.exit("/!\ Yo Dukie! Port not found! Aborting.")
         self.serial.reset_input_buffer()
