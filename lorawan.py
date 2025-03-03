@@ -58,9 +58,9 @@ if __name__ == "__main__":
         verbose=True,
         callback_events=events,
     )
-    # device.deveui = "0807060504030201"
-    # device.joineui = "0102030405060708"
-    # device.appkey = "11111111111111111111111111111113"
+    device.deveui = "70B3D57ED09F6A7B"
+    device.joineui = "0000000000000000"
+    device.appkey = "4EE7845FA0A5BA6D81389261A7140E5B"
 
     # Display device informations
     print(f"Module devEUI: 0x{device.deveui}")
