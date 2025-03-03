@@ -92,15 +92,10 @@ class RAK3172:
 
     @network_mode.setter
     def network_mode(self, network_mode):
-        status, data = self.send_command("AT+NWM=?")
+        status, _ = self.send_command(f"AT+NWM={network_mode}")
         if status != "OK":
-            print("ERROR - Unable to check network mode")
+            print("ERROR - Unable to set network mode")
             sys.exit(1)
-        if int(data) != network_mode:
-            status, _ = self.send_command(f"AT+NWM={network_mode}")
-            if status != "OK":
-                print("ERROR - Unable to set network mode")
-                sys.exit(1)
         self.__network_mode = network_mode
 
     @property
@@ -232,6 +227,6 @@ class RAK3172:
     def status(self):
         status, _ = self.send_command("AT")
         if status == "OK":
-            return True
-        else:
             return False
+        else:
+            return True
