@@ -13,16 +13,21 @@ class STATES:
 
 device = None
 state = None
+received_data = None
 
 
 def events(type, parameter):
-    global state
+    global state, received_data
 
     if type == RAK3172.EVENTS.JOINED:
         state = STATES.JOINED
         print("EVENT - Joined")
     elif type == RAK3172.EVENTS.SEND_CONFIRMATION:
         print(f"EVENT - Confirmed: {parameter}")
+    elif type == RAK3172.EVENTS.RECEIVED:
+        received_data = parameter
+        state = STATES.RECEIVED
+        print(f"EVENT - Data Received: {parameter}")
     else:
         print("EVENT - Unknown event {type}")
 
@@ -79,6 +84,9 @@ if __name__ == "__main__":
             # Send a payload
             device.send_payload(2, b"FEED")
             signal.alarm(10)
+            state = STATES.SLEEP
+        elif state == STATES.RECEIVED:
+            print(f"Received Data: {received_data}")
             state = STATES.SLEEP
         elif state == STATES.SLEEP:
             pass
