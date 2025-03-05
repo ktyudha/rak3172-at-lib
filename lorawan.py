@@ -2,6 +2,7 @@ from threading import Event
 from rak3172 import RAK3172
 import signal
 import sys
+import time
 
 
 class STATES:
@@ -13,11 +14,10 @@ class STATES:
 
 device = None
 state = None
-received_data = None
 
 
 def events(type, parameter):
-    global state, received_data
+    global state
 
     if type == RAK3172.EVENTS.JOINED:
         state = STATES.JOINED
@@ -25,9 +25,13 @@ def events(type, parameter):
     elif type == RAK3172.EVENTS.SEND_CONFIRMATION:
         print(f"EVENT - Confirmed: {parameter}")
     elif type == RAK3172.EVENTS.RECEIVED:
-        received_data = parameter
-        state = STATES.RECEIVED
+        rssi = device.rssi
+        snr = device.snr
         print(f"EVENT - Data Received: {parameter}")
+        print(f"RSSI: {rssi}, SNR: {snr}")
+
+        # Kirim kembali RSSI gateway ke node
+        send_rssi_data(rssi, snr)
     else:
         print("EVENT - Unknown event {type}")
 
@@ -40,6 +44,16 @@ def handler_timeout_tx(signal, frame):
 def handler_sigint(signal, frame):
     device.close()
     sys.exit(0)
+
+def send_rssi_data(node_rssi, node_snr):
+    """Mengirimkan data RSSI node dan RSSI gateway."""
+    gateway_rssi = device.rssi  # Dapatkan RSSI dari LoRa module
+    gateway_snr = device.snr    # Dapatkan SNR dari LoRa module
+    
+    payload = f"{node_rssi},{node_snr},{gateway_rssi},{gateway_snr}".encode()
+    
+    print(f"Mengirim data RSSI: {payload}")
+    device.send_payload(2, payload)
 
 
 if __name__ == "__main__":
@@ -60,7 +74,7 @@ if __name__ == "__main__":
     device = RAK3172(
         serial_port=port,
         network_mode=RAK3172.NETWORK_MODES.LORAWAN,
-        verbose=True,
+        verbose=False,
         callback_events=events,
     )
     device.deveui = "70B3D57ED09F6A7B"
@@ -81,12 +95,14 @@ if __name__ == "__main__":
             print("Device has joined the network")
             state = STATES.SEND_DATA
         elif state == STATES.SEND_DATA:
+            node_rssi = device.rssi
+            node_snr = device.snr
+            send_rssi_data(node_rssi, node_snr)
             # Send a payload
-            device.send_payload(2, b"FEED")
+            # device.send_payload(2, b"FEED")
             signal.alarm(10)
             state = STATES.SLEEP
-        elif state == STATES.RECEIVED:
-            print(f"Received Data: {received_data}")
-            state = STATES.SLEEP
+        elif state == STATES.RECEIVE_DATA:
+            print("Menunggu data masuk...")
         elif state == STATES.SLEEP:
-            pass
+            time.sleep(5)
