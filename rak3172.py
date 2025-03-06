@@ -27,6 +27,9 @@ class RAK3172:
     class EVENTS:
         JOINED = 0
         SEND_CONFIRMATION = 1
+        RECEIVED=2
+        ERROR=3
+        TIMEOUT=4
 
     def __init__(self, serial_port, network_mode, verbose=False, callback_events=None):
         
