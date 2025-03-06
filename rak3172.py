@@ -234,3 +234,41 @@ class RAK3172:
             return True
         else:
             return False
+
+    def configure_p2p(self, frequency, spreading_factor, bandwidth, coding_rate):
+        """
+        Konfigurasi perangkat ke mode P2P dengan parameter yang diberikan
+        """
+        self.send_command(f"AT+PFREQ={frequency}")  # Set frekuensi LoRa
+        self.send_command(f"AT+PSF={spreading_factor}")  # Set spreading factor
+        self.send_command(f"AT+PBW={bandwidth}")  # Set bandwidth
+        self.send_command(f"AT+PCR={coding_rate}")  # Set coding rate
+        print("P2P mode configured successfully!")
+
+    # def configure_p2p(self, frequency, spreading_factor, bandwidth, coding_rate):
+    #     status, _ = self.send_command(f"AT+NWM={RAK3172.NETWORK_MODES.P2P}")
+    #     if status != "OK":
+    #         print("ERROR - Unable to set network mode to P2P")
+    #         return
+
+    #     status, _ = self.send_command(f"AT+PFREQ={frequency}")
+    #     if status != "OK":
+    #         print("ERROR - Unable to set frequency")
+    #         return
+
+    #     status, _ = self.send_command(f"AT+PSF={spreading_factor}")
+    #     if status != "OK":
+    #         print("ERROR - Unable to set spreading factor")
+    #         return
+
+    #     status, _ = self.send_command(f"AT+PBW={bandwidth}")
+    #     if status != "OK":
+    #         print("ERROR - Unable to set bandwidth")
+    #         return
+
+    #     status, _ = self.send_command(f"AT+PCR={coding_rate}")
+    #     if status != "OK":
+    #         print("ERROR - Unable to set coding rate")
+    #         return
+
+    #     print("P2P configuration set successfully")
