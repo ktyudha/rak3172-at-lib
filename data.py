@@ -1,3 +1,5 @@
+import json
+
 class SaveData:
     def __init__(self):
         self.data_list = []
@@ -34,3 +36,29 @@ class ConvertData:
     def str2hex(input_string):
         hex_string = input_string.encode().hex().upper()
         return hex_string
+
+    @staticmethod
+    def hex2str(hex_string):
+        return bytes.fromhex(hex_string).decode("utf-8")
+    
+    @staticmethod
+    def obj2str(input_object):
+        try:
+            # Convert object (dict/list) to JSON string
+            json_string = json.dumps(input_object, separators=(",",":"))
+            return json_string
+        except Exception as e:
+            print(f"Error converting object to string: {e}")
+            return None
+
+    @staticmethod
+    def obj2hex(input_object):
+        try:
+            # Convert object to string
+            json_string = ConvertData.obj2str(input_object).encode()
+            # Convert string to hex
+            hex_string = ConvertData.hex2str(json_string)
+            return hex_string
+        except Exception as e:
+            print(f"Error converting object to hex: {e}")
+            return None

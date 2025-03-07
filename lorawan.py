@@ -5,6 +5,7 @@ import signal
 import sys
 import time
 import random
+import json
 
 class STATES:
     JOINING = 0
@@ -13,11 +14,8 @@ class STATES:
     SLEEP = 3
     RECV_DATA = 4
 
-
-
 device = None
 state = None
-
 
 def events(type, parameter):
     global state
@@ -27,29 +25,32 @@ def events(type, parameter):
         print("EVENT - Joined")
     elif type == RAK3172.EVENTS.SEND_CONFIRMATION:
         print(f"EVENT - Confirmed: {parameter}")
+        state = STATES.RECV_DATA
     else:
         print("EVENT - Unknown event {type}")
 
 
 def handler_timeout_tx(signal, frame):
+    print("Timeout occurred during transmission")
     global state
     state = STATES.SEND_DATA
 
 
 def handler_sigint(signal, frame):
+    print("SIGINT received, exiting...")
     device.close()
     sys.exit(0)
 
+def convert_json_to_hex(data):
+    # Konversi JSON ke string
+    json_str = json.dumps(data)
+    # Konversi string ke heksadesimal
+    hex_payload = json_str.encode("utf-8").hex()
+    return hex_payload
+
 
 if __name__ == "__main__":
-    # if len(sys.argv) < 2:
-    #     print(
-    #         "\n\n================================================================\nMissing argument! Usage:"
-    #     )
-    #     print("> python3 lorawan.py /dev/ttyUSB0")
-    #     sys.exit(
-    #         "Leaving now\n================================================================\n\n"
-    #     )
+  
     port = str(sys.argv[1])
 
     # Prepare signal management
@@ -62,37 +63,38 @@ if __name__ == "__main__":
         verbose=False,
         callback_events=events,
     )
-    device.deveui = "70B3D57ED09F6A7B"
-    device.joineui = "0000000000000000"
-    device.appkey = "4EE7845FA0A5BA6D81389261A7140E5B"
-
-    # Display device informations
-    # print(f"Module devEUI: 0x{device.deveui}")
-    # print(f"Module joinEUI: 0x{device.joineui}")
-    # print(f"Module AppKey: 0x{device.appkey}")
-
-    # Join the network
-    device.join()
-    state = STATES.JOINING
+    # device.deveui = "70B3D57ED09F6A7B"
+    # device.joineui = "0000000000000000"
+    # device.appkey = "4EE7845FA0A5BA6D81389261A7140E5B"
 
     while True:
         if state == STATES.JOINED:
             print("Device has joined the network")
             state = STATES.SEND_DATA
         elif state == STATES.SEND_DATA:
-            message_send = random.randint(1000,9999)
-            message_send_hex = ConvertData.str2hex(str(message_send)).encode()
-            status = device.send_payload(2, message_send_hex)
-            # Send a payload
-            # device.send_payload(2, b"FEED")
+            print("send data")
+            payload_text = "hello"
+            payload_hex = ConvertData.str2hex(payload_text).encode()  # Konversi ke hex
+            status = device.send_payload(2, payload_hex)
+            # device.send_payload(2, b"AAFFBB")
             signal.alarm(2)
-        
+            state = STATES.RECV_DATA
         elif state == STATES.RECV_DATA:
-            data_from_gw = device.getdata
-            data_split = data_from_gw.split("=")
-            if data_split[1].split(":")[0] =="1":
-                # print("masuk")
-                print(f"message received: {data_from_gw.split(':')[1]}")
+            print("successs recv")
+            data_from_gw = device.getdata  # Asumsikan ini mengandung string panjang
+            print(f"Raw Data Received: {data_from_gw}")  # Debug output
+
+            # Cari bagian yang mengandung payload HEX (biasanya setelah titik dua terakhir)
+            try:
+                parts = data_from_gw.split(":")
+                hex_payload = parts[-1].strip()  # Ambil bagian terakhir sebagai payload
+
+                # Konversi ke string
+                received_message = ConvertData.hex2str(hex_payload)
+                print(f"Message received: {received_message}")
+
+            except Exception as e:
+                print(f"Error parsing received data: {e}")
             state = STATES.SLEEP
         elif state == STATES.SLEEP:
             time.sleep(1)
