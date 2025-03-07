@@ -152,6 +152,14 @@ class RAK3172:
         self.reset_soft()
 
     @property
+    def getdata(self):
+        status,data = self.send_command("AT+RECV=?")
+        if status != "OK":
+            print("ERROR - Unable to get data")
+            exit()
+        return data
+
+    @property
     def verbose(self):
         return self.__verbose
 
@@ -222,8 +230,11 @@ class RAK3172:
     def send_payload(self, fport, payload, confirmed=False):
         # TODO - Implement confirm messages
         status, _ = self.send_command(f'AT+SEND={fport}:{payload.decode("ASCII")}')
+        print(status)
         if status != "OK":
             print("ERROR - Unable to send payload")
+            return False
+        return True
 
     def status(self):
         status, _ = self.send_command("AT")
