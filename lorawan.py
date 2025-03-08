@@ -63,13 +63,14 @@ if __name__ == "__main__":
         verbose=False,
         callback_events=events,
     )
-    # device.deveui = "70B3D57ED09F6A7B"
-    # device.joineui = "0000000000000000"
-    # device.appkey = "4EE7845FA0A5BA6D81389261A7140E5B"
+    device.deveui = "70B3D57ED09F6A7B"
+    device.joineui = "0000000000000000"
+    device.appkey = "4EE7845FA0A5BA6D81389261A7140E5B"
 
     while True:
         if state == STATES.JOINED:
             print("Device has joined the network")
+            device.join()
             state = STATES.SEND_DATA
         elif state == STATES.SEND_DATA:
             print("send data")
