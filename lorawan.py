@@ -12,7 +12,8 @@ class STATES:
     JOINED = 1
     SEND_DATA = 2
     SLEEP = 3
-    RECV_DATA = 4
+    RECEIVE_DATA = 4
+
 
 device = None
 state = None
@@ -74,13 +75,13 @@ if __name__ == "__main__":
             state = STATES.SEND_DATA
         elif state == STATES.SEND_DATA:
             print("send data")
-            payload_text = "hello"
+            payload_text = "31;55;5"
             payload_hex = ConvertData.str2hex(payload_text).encode()  # Konversi ke hex
             status = device.send_payload(2, payload_hex)
             # device.send_payload(2, b"AAFFBB")
             signal.alarm(2)
-            state = STATES.RECV_DATA
-        elif state == STATES.RECV_DATA:
+            state = STATES.RECEIVE_DATA
+        elif state == STATES.RECEIVE_DATA:
             print("successs recv")
             data_from_gw = device.getdata  # Asumsikan ini mengandung string panjang
             print(f"Raw Data Received: {data_from_gw}")  # Debug output
