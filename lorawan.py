@@ -70,7 +70,7 @@ if __name__ == "__main__":
     while True:
         if state == STATES.JOINED:
             print("Device has joined the network")
-            device.join()
+            # device.join()
             state = STATES.SEND_DATA
         elif state == STATES.SEND_DATA:
             print("send data")
