@@ -155,6 +155,14 @@ class RAK3172:
         self.reset_soft()
 
     @property
+    def getdata(self):
+        status,data = self.send_command("AT+RECV=?")
+        if status != "OK":
+            print("ERROR - Unable to get data")
+            exit()
+        return data
+
+    @property
     def verbose(self):
         return self.__verbose
 
