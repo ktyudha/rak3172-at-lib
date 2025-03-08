@@ -1,4 +1,5 @@
 import json
+import binascii
 
 class SaveData:
     def __init__(self):
@@ -53,12 +54,26 @@ class ConvertData:
 
     @staticmethod
     def obj2hex(input_object):
-        try:
-            # Convert object to string
-            json_string = ConvertData.obj2str(input_object).encode()
-            # Convert string to hex
-            hex_string = ConvertData.hex2str(json_string)
+            json_string = ConvertData.obj2str(input_object)
+            hex_string = ConvertData.str2hex(json_string).encode()
             return hex_string
+
+
+    # @staticmethod
+    # def obj2hex(input_object):
+    #     try:
+    #         json_string = json.dumps(input_object, separators=(",", ":"))
+    #         hex_string = binascii.hexlify(json_string.encode()).decode().upper()
+    #         return hex_string
+    #     except Exception as e:
+    #         print(f"Error converting object to hex: {e}")
+    #         return None
+
+    @staticmethod
+    def hex2obj(hex_string):
+        try:
+            json_string = binascii.unhexlify(hex_string).decode()
+            return json.loads(json_string)
         except Exception as e:
-            print(f"Error converting object to hex: {e}")
+            print(f"Error converting hex to object: {e}")
             return None

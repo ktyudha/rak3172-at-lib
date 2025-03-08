@@ -98,7 +98,7 @@ if __name__ == "__main__":
             state = STATES.SEND_DATA
         elif state == STATES.SEND_DATA:
             print("send data")
-            payload_text = "hello"
+            payload_text = "31;55;5"
             payload_hex = ConvertData.str2hex(payload_text).encode()  # Konversi ke hex
             status = device.send_payload(2, payload_hex)
             # device.send_payload(2, b"AAFFBB")
