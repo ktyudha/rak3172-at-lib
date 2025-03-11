@@ -64,14 +64,18 @@ if __name__ == "__main__":
         verbose=False,
         callback_events=events,
     )
-    # device.deveui = "70B3D57ED09F6A7B"
-    # device.joineui = "0000000000000000"
-    # device.appkey = "4EE7845FA0A5BA6D81389261A7140E5B"
+    device.deveui = "70B3D57ED09F6A7B"
+    device.joineui = "0000000000000000"
+    device.appkey = "4EE7845FA0A5BA6D81389261A7140E5B"
 
+    device.join()
+    state = STATES.JOINING
+    
     while True:
+        print(state)
+        time.sleep(1)
         if state == STATES.JOINED:
             print("Device has joined the network")
-            # device.join()
             state = STATES.SEND_DATA
         elif state == STATES.SEND_DATA:
             print("send data")
@@ -81,6 +85,7 @@ if __name__ == "__main__":
             # device.send_payload(2, b"AAFFBB")
             signal.alarm(2)
             state = STATES.RECEIVE_DATA
+
         elif state == STATES.RECEIVE_DATA:
             print("successs recv")
             data_from_gw = device.getdata  # Asumsikan ini mengandung string panjang
