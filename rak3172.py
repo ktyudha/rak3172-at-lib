@@ -246,7 +246,7 @@ class RAK3172:
         else:
             return False
 
-    def configure_p2p(self, frequency, spreading_factor, bandwidth, coding_rate):
+    def configure_p2p(self, frequency, spreading_factor, bandwidth, coding_rate, preamble, tx_power):
         """
         Konfigurasi perangkat ke mode P2P dengan parameter yang diberikan
         """
