@@ -254,6 +254,8 @@ class RAK3172:
         self.send_command(f"AT+PSF={spreading_factor}")  # Set spreading factor
         self.send_command(f"AT+PBW={bandwidth}")  # Set bandwidth
         self.send_command(f"AT+PCR={coding_rate}")  # Set coding rate
+        self.send_command(f"AT+PREAMBLE={preamble}")  # Sesuaikan dengan perintah AT yang benar
+        self.send_command(f"AT+PTP={tx_power}") # TX power
         print("P2P mode configured successfully!")
 
     # def configure_p2p(self, frequency, spreading_factor, bandwidth, coding_rate):
