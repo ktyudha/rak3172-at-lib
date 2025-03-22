@@ -45,17 +45,17 @@ send_command("AT+PTP=20")  # TX Power 20 dBm
 print("[READY] Node 2 siap menerima data...")
 
 while True:
-    # send_command("AT+PRECV=0")  # Reset RX
-    # time.sleep(1)
+    send_command("AT+PRECV=0")  # Reset RX
+    time.sleep(0.5)
     send_command("AT+PRECV=65535")  # Aktifkan RX kembali
-    time.sleep(1)
+    time.sleep(0.5)
 
     response = ser.read(ser.inWaiting()).decode(errors='ignore')  # Baca data masuk
     if response:
         print(f"[RECEIVED RAW] {response}")  # Debugging: Print semua data masuk
 
     if "+EVT:RXP2P" in response:
-            hex_data = response.split(",")[-1].strip()  # Ambil bagian HEX
+            hex_data = response.split(":")[-1].strip()  # Ambil bagian HEX
             received_message = bytes.fromhex(hex_data).decode(errors='ignore')  # Konversi HEX ke teks
             print(f"📩 Pesan diterima: {received_message}")
             # print(f"📩 Pesan diterima: {hex_data}")
