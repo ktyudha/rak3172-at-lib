@@ -62,23 +62,24 @@ if __name__ == "__main__":
     device = RAK3172(
         serial_port=port,
         network_mode=RAK3172.NETWORK_MODES.P2P,
-        verbose=False,
+        verbose=True,
         callback_events=events,
     )
 
-    # Konfigurasi mode P2P
-    device.configure_p2p(
-        frequency=868000000,  # Frekuensi LoRa (sesuaikan dengan regional)
-        spreading_factor=7,    # SF7 (bisa diubah)
-        bandwidth=125,         # Bandwidth 125 kHz
-        coding_rate=1,         # Coding rate 4/5
-        preamble=8,            # Preamble length (sesuai dengan versi C++)
-        tx_power=22            # TX Power 22 dBm (maksimal)
-    )
+    # # Konfigurasi mode P2P
+    # device.configure_p2p(
+    #     frequency=868000000,  # Frekuensi LoRa (sesuaikan dengan regional)
+    #     spreading_factor=7,    # SF7 (bisa diubah)
+    #     bandwidth=125,         # Bandwidth 125 kHz
+    #     coding_rate=1,         # Coding rate 4/5
+    #     preamble=8,            # Preamble length (sesuai dengan versi C++)
+    #     tx_power=22            # TX Power 22 dBm (maksimal)
+    # )
 
 
     print("Perangkat siap di mode P2P!")
 
     # Loop utama untuk menerima data
     while True:
-        time.sleep(5)  # Menjaga loop tetap berjalan
+        print("tes")
+        time.sleep(1)  # Menjaga loop tetap berjalan
