@@ -1,5 +1,6 @@
 import serial
 import time
+import sys
 
 serial_port = "COM6"
 baud_rate = 115200
@@ -37,7 +38,7 @@ print("Node 1 siap mengirim data...")
 while True:
     message = "Hello"
     hex_message = message.encode().hex()  # Ubah teks menjadi HEX
-    # send_command(f"AT+PSEND={hex_message}")
-    # send_command("AT+PSEND=33;32;5;2;23;751")
+    send_command(f"AT+PSEND={hex_message}")
+    # send_command("AT+PSEND=AABA")
     print(f"Pesan terkirim: {message}")
-    time.sleep(1)  # Kirim setiap 5 detik
+    time.sleep(0.5)  # Kirim setiap 5 detik
