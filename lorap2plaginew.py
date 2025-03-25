@@ -3,7 +3,7 @@ import time
 import sys
 
 # Inisialisasi Serial ke RAK3172 (Sesuaikan Port)
-serial_port = "/dev/tty.usbserial-1120"  # Ganti sesuai dengan port Node 2
+serial_port = "/dev/tty.usbserial-10"  # Ganti sesuai dengan port Node 2
 baud_rate = 115200
 
 try:
@@ -29,12 +29,12 @@ def send_command(command, delay=0.5):
 send_command("AT+PRECV=0")  # Matikan mode penerimaan
 time.sleep(1)
 
-# 🔹 Pastikan LoRa dalam mode P2P
+# Pastikan LoRa dalam mode P2P
 send_command("AT")  # Cek koneksi
 send_command("AT+NWM=0")  # Mode P2P
 send_command("AT+NJM=0")  # Non LoRaWAN
 
-# 🔹 Konfigurasi P2P (Harus Sama dengan Node 1)
+# Konfigurasi P2P (Harus Sama dengan Node 1)
 send_command("AT+PFREQ=868000000")  # Frekuensi 915 MHz
 send_command("AT+PSF=7")  # Spreading Factor 7
 send_command("AT+PBW=125")  # Bandwidth 125 kHz
@@ -50,7 +50,7 @@ while True:
     send_command("AT+PRECV=65535")  # Aktifkan RX kembali
     time.sleep(0.5)
 
-    response = ser.read(ser.inWaiting()).decode(errors='ignore')  # Baca data masuk
+    response = ser.readline().decode(errors='ignore')  # Baca data masuk
     if response:
         print(f"[RECEIVED RAW] {response}")  # Debugging: Print semua data masuk
 
@@ -58,7 +58,3 @@ while True:
             hex_data = response.split(":")[-1].strip()  # Ambil bagian HEX
             received_message = bytes.fromhex(hex_data).decode(errors='ignore')  # Konversi HEX ke teks
             print(f"📩 Pesan diterima: {received_message}")
-            # print(f"📩 Pesan diterima: {hex_data}")
-        # try:
-        # except ValueError:
-        #     print("[WARNING] Gagal decoding data!")
