@@ -120,10 +120,10 @@ def main():
             time.sleep(0.5)
             status = send_command("AT+PRECV=65535")  # Aktifkan penerimaan
             time.sleep(0.5)
-            response = send_command("AT+RECV=?")
+            # response = send_command("AT+RECV=?")
+            response = ser.read(ser.inWaiting()).decode(errors='ignore')
             logging.info(f"[RECEIVED RAW] {response}")
 
-            # response = ser.read(ser.inWaiting()).decode(errors='ignore')
             # time.sleep(1)
             if response:
                 parts = response.split(":")
