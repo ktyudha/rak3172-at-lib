@@ -4,7 +4,8 @@ from data import ConvertData
 import signal
 import sys
 import time
-
+import random
+import json
 
 class STATES:
     JOINING = 0
@@ -17,7 +18,6 @@ class STATES:
 device = None
 state = None
 
-
 def events(type, parameter):
     global state
 
@@ -26,47 +26,32 @@ def events(type, parameter):
         print("EVENT - Joined")
     elif type == RAK3172.EVENTS.SEND_CONFIRMATION:
         print(f"EVENT - Confirmed: {parameter}")
-    elif type == RAK3172.EVENTS.RECEIVED:
-        rssi = device.rssi
-        snr = device.snr
-        print(f"EVENT - Data Received: {parameter}")
-        print(f"RSSI: {rssi}, SNR: {snr}")
-
-        # Kirim kembali RSSI gateway ke node
-        send_rssi_data(rssi, snr)
+        state = STATES.RECV_DATA
     else:
         print("EVENT - Unknown event {type}")
 
 
 def handler_timeout_tx(signal, frame):
+    print("Timeout occurred during transmission")
     global state
     state = STATES.SEND_DATA
 
 
 def handler_sigint(signal, frame):
+    print("SIGINT received, exiting...")
     device.close()
     sys.exit(0)
 
-def send_rssi_data(node_rssi, node_snr):
-    """Mengirimkan data RSSI node dan RSSI gateway."""
-    gateway_rssi = device.rssi  # Dapatkan RSSI dari LoRa module
-    gateway_snr = device.snr    # Dapatkan SNR dari LoRa module
-    
-    payload = f"{node_rssi},{node_snr},{gateway_rssi},{gateway_snr}".encode()
-    
-    print(f"Mengirim data RSSI: {payload}")
-    device.send_payload(2, payload)
+def convert_json_to_hex(data):
+    # Konversi JSON ke string
+    json_str = json.dumps(data)
+    # Konversi string ke heksadesimal
+    hex_payload = json_str.encode("utf-8").hex()
+    return hex_payload
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print(
-            "\n\n================================================================\nMissing argument! Usage:"
-        )
-        print("> python3 lorawan.py /dev/ttyUSB0")
-        sys.exit(
-            "Leaving now\n================================================================\n\n"
-        )
+  
     port = str(sys.argv[1])
 
     # Prepare signal management
@@ -83,27 +68,24 @@ if __name__ == "__main__":
     device.joineui = "0000000000000000"
     device.appkey = "4EE7845FA0A5BA6D81389261A7140E5B"
 
-    # Display device informations
-    print(f"Module devEUI: 0x{device.deveui}")
-    print(f"Module joinEUI: 0x{device.joineui}")
-    print(f"Module AppKey: 0x{device.appkey}")
-
-    # Join the network
     device.join()
     state = STATES.JOINING
-
+    
     while True:
+        print(state)
+        time.sleep(1)
         if state == STATES.JOINED:
             print("Device has joined the network")
             state = STATES.SEND_DATA
         elif state == STATES.SEND_DATA:
             print("send data")
-            payload_text = "hello"
+            payload_text = "31;55;5"
             payload_hex = ConvertData.str2hex(payload_text).encode()  # Konversi ke hex
             status = device.send_payload(2, payload_hex)
             # device.send_payload(2, b"AAFFBB")
             signal.alarm(2)
             state = STATES.RECEIVE_DATA
+
         elif state == STATES.RECEIVE_DATA:
             print("successs recv")
             data_from_gw = device.getdata  # Asumsikan ini mengandung string panjang

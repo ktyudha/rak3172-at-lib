@@ -7,6 +7,10 @@ import time
 
 device = None
 
+def hex_dump(data):
+    """Mencetak data dalam format hex untuk debugging."""
+    print("HEX DUMP:")
+    print(" ".join(f"{byte:02X}" for byte in data))
 
 def events(event_type, parameter):
     """Callback untuk event data masuk"""
@@ -15,6 +19,7 @@ def events(event_type, parameter):
         snr = device.snr
         print(f"EVENT - Data Received: {parameter}")
         print(f"RSSI: {rssi}, SNR: {snr}")
+        hex_dump(parameter)
 
         # Kirim kembali RSSI dan SNR ke node pengirim
         send_rssi_data(rssi, snr)
@@ -31,13 +36,16 @@ def handler_sigint(signal, frame):
 
 def send_rssi_data(node_rssi, node_snr):
     """Mengirimkan data RSSI node dan RSSI gateway."""
-    gateway_rssi = device.rssi  # Dapatkan RSSI dari LoRa module
-    gateway_snr = device.snr    # Dapatkan SNR dari LoRa module
+    gateway_rssi = device.rssi
+    gateway_snr = device.snr
     
     payload = f"{node_rssi},{node_snr},{gateway_rssi},{gateway_snr}".encode()
     
-    print(f"Mengirim data RSSI: {payload}")
-    device.send_payload(2, payload)
+    print(f"📤 Mengirim data RSSI: {payload}")
+    hex_dump(payload)  # Debugging
+    
+    result = device.send_payload(2, payload)
+    print("✅ Pengiriman", "BERHASIL" if result else "GAGAL")
 
 
 if __name__ == "__main__":
@@ -63,8 +71,11 @@ if __name__ == "__main__":
         frequency=868000000,  # Frekuensi LoRa (sesuaikan dengan regional)
         spreading_factor=7,    # SF7 (bisa diubah)
         bandwidth=125,         # Bandwidth 125 kHz
-        coding_rate=1          # Coding rate 4/5
+        coding_rate=1,         # Coding rate 4/5
+        preamble=8,            # Preamble length (sesuai dengan versi C++)
+        tx_power=22            # TX Power 22 dBm (maksimal)
     )
+
 
     print("Perangkat siap di mode P2P!")
 
