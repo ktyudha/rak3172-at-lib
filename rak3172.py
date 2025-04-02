@@ -246,42 +246,47 @@ class RAK3172:
         else:
             return False
 
-    def configure_p2p(self, frequency, spreading_factor, bandwidth, coding_rate, preamble, tx_power):
+     def configure_p2p(self, frequency, spreading_factor, bandwidth, coding_rate, preamble, tx_power):
         """
         Konfigurasi perangkat ke mode P2P dengan parameter yang diberikan
         """
+        self.send_command("AT+PRECV=0")
         self.send_command(f"AT+PFREQ={frequency}")  # Set frekuensi LoRa
         self.send_command(f"AT+PSF={spreading_factor}")  # Set spreading factor
         self.send_command(f"AT+PBW={bandwidth}")  # Set bandwidth
         self.send_command(f"AT+PCR={coding_rate}")  # Set coding rate
-        self.send_command(f"AT+PREAMBLE={preamble}")  # Sesuaikan dengan perintah AT yang benar
+        self.send_command(f"AT+PPL={preamble}")  # Sesuaikan dengan perintah AT yang benar
         self.send_command(f"AT+PTP={tx_power}") # TX power
+        self.send_command("AT+PRECV=65534")
         print("P2P mode configured successfully!")
 
-    # def configure_p2p(self, frequency, spreading_factor, bandwidth, coding_rate):
-    #     status, _ = self.send_command(f"AT+NWM={RAK3172.NETWORK_MODES.P2P}")
-    #     if status != "OK":
-    #         print("ERROR - Unable to set network mode to P2P")
-    #         return
+    def enable_p2p_rx(self):
+        """
+        Mengaktifkan mode penerimaan P2P LoRa.
+        """
+        self.send_command("AT+PRECV=0")  # Reset buffer RX
+        time.sleep(0.5)
+        self.send_command("AT+PRECV=65534")  # Aktifkan RX terus-menerus
+        time.sleep(0.5)
+        print("P2P RX enabled and listening for packets...")
 
-    #     status, _ = self.send_command(f"AT+PFREQ={frequency}")
-    #     if status != "OK":
-    #         print("ERROR - Unable to set frequency")
-    #         return
+    # def get_p2p_data(self):
+    #     """
+    #     Mengambil data yang diterima dalam mode P2P.
+    #     """
+    #     status, data = self.send_command("AT+PRECV=?")  # Cek apakah ada data yang diterima
+    #     if status == "OK" and data:
+    #        print(f"inidata{data}")
+    #     else:
+    #         print("No data received.")
+    #         return None
 
-    #     status, _ = self.send_command(f"AT+PSF={spreading_factor}")
-    #     if status != "OK":
-    #         print("ERROR - Unable to set spreading factor")
-    #         return
+    @property
+    def get_p2p_data(self):
+        status,data = self.send_command("AT+PRECV=?")
+        if status != "OK":
+            print("ERROR - Unable to get data")
+            exit()
 
-    #     status, _ = self.send_command(f"AT+PBW={bandwidth}")
-    #     if status != "OK":
-    #         print("ERROR - Unable to set bandwidth")
-    #         return
-
-    #     status, _ = self.send_command(f"AT+PCR={coding_rate}")
-    #     if status != "OK":
-    #         print("ERROR - Unable to set coding rate")
-    #         return
-
-    #     print("P2P configuration set successfully")
+        
+        return self.serial.readline().decode(errors='ignore')

@@ -3,7 +3,8 @@ import time
 import sys
 
 # Inisialisasi Serial ke RAK3172 (Sesuaikan Port)
-serial_port = "/dev/tty.usbserial-10"  # Ganti sesuai dengan port Node 2
+serial_port = str(sys.argv[1])
+# serial_port = "/dev/tty.usbserial-1120"  # Ganti sesuai dengan port Node 2
 baud_rate = 115200
 
 try:
@@ -41,15 +42,11 @@ send_command("AT+PBW=125")  # Bandwidth 125 kHz
 send_command("AT+PCR=1")  # Coding Rate 4/5
 send_command("AT+PPL=8")  # Preamble Length 8
 send_command("AT+PTP=20")  # TX Power 20 dBm
+send_command("AT+PRECV=65534")
 
 print("[READY] Node 2 siap menerima data...")
 
 while True:
-    send_command("AT+PRECV=0")  # Reset RX
-    time.sleep(0.5)
-    send_command("AT+PRECV=65535")  # Aktifkan RX kembali
-    time.sleep(0.5)
-
     response = ser.readline().decode(errors='ignore')  # Baca data masuk
     if response:
         print(f"[RECEIVED RAW] {response}")  # Debugging: Print semua data masuk
