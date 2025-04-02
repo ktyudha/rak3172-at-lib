@@ -14,40 +14,40 @@ class STATES:
     SEND_LORAWAN = 1
     JOINING = 2
     JOINED = 3
+    WAITING_P2P_DATA = 4
 
 device = None
-state = None
+state = STATES.WAITING_P2P_DATA
 payload = ""
-
+lorawan_sent = False
 
 def events(type, parameter):
     """Callback for incoming data events"""
-    global state, payload
+    global state, payload, lorawan_sent
 
     if type == RAK3172.EVENTS.JOINED:
         state = STATES.JOINED
         print("EVENT - Joined")
     elif type == RAK3172.EVENTS.SEND_CONFIRMATION:
         print(f"EVENT - Confirmed: {parameter}")
-        state = STATES.SEND_LORAWAN
+        lorawan_sent = True
+        state = STATES.WAITING_P2P_DATA  # Kembali menunggu data P2P
     elif type == RAK3172.EVENTS.RECEIVED:
         payload = bytes.fromhex(parameter).decode(errors='ignore')
         print(f"EVENT - Data: {payload}")
         state = STATES.RECEIVE_P2P
     else:
-        print("EVENT - Unknown event {type}")
-
-    # if event_type == RAK3172.EVENTS.RECEIVED:
-    #     print(f"Data diterima:{bytes.fromhex(parameter).decode(errors='ignore')}")
+        print(f"EVENT - Unknown event {type}")
 
 def handler_timeout_tx(signal, frame):
     print("Timeout occurred during transmission")
     global state
-    state = STATES.SEND_DATA
+    state = STATES.SEND_LORAWAN
 
 def handler_sigint(signal, frame):
     print("SIGINT received, exiting...")
-    device.close()
+    if device:
+        device.close()
     sys.exit(0)
 
 def switch_to_p2p(port):
@@ -64,7 +64,7 @@ def switch_to_p2p(port):
         bandwidth=125,
         coding_rate=1,
         preamble=8,
-        tx_power=20
+        tx_power=20,
     )
     return device
 
@@ -83,7 +83,6 @@ def switch_to_lorawan(port):
     return device
 
 if __name__ == "__main__":
-
     port = str(sys.argv[1])
 
     # Prepare signal management
@@ -91,40 +90,65 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, handler_sigint)
 
     while True:
-
-        # ====== P2P ======
-        # Switch to P2P mode
-        device = switch_to_p2p(port)
-        print("Operating in P2P mode for 10 seconds")
+        if state == STATES.WAITING_P2P_DATA or state == STATES.RECEIVE_P2P:
+            # ====== P2P MODE ======
+            if device:
+                device.close()
+                time.sleep(1)
             
-        # Operate in P2P mode
-        start_time = time.time()
-        while time.time() - start_time < 10:
-            # Your P2P operations here
-            time.sleep(1)
+            device = switch_to_p2p(port)
+            print("Waiting for P2P data...")
             
-        # DISABLE P2P
-        device.send_command("AT+PRECV=0")
-        # Clean up P2P mode
-        device.close()            
-        time.sleep(1)  # Small delay before switching
-
-
-        # ====== LoRaWAN ====== 
-        # Switch to LoRaWAN mode
-        device = switch_to_lorawan(port)
-        print("Operating in LoRaWAN mode for 20 seconds")
+            # Tunggu sampai data P2P diterima
+            start_time = time.time()
+            while state != STATES.RECEIVE_P2P and (time.time() - start_time < 30):  # Timeout 30 detik
+                time.sleep(0.1)
             
-        # Operate in LoRaWAN mode
-        start_time = time.time()
-        while time.time() - start_time < 20:
-            # Your LoRaWAN operations here
-            time.sleep(1)
+            if state == STATES.RECEIVE_P2P:
+                print(f"Payload received in P2P mode: {payload}")
+                # Nonaktifkan P2P RX sebelum beralih
+                device.send_command("AT+PRECV=0")
+                device.close()
+                time.sleep(1)
+                state = STATES.JOINING  # Siap untuk beralih ke LoRaWAN
+
+        elif state == STATES.JOINING or state == STATES.JOINED or state == STATES.SEND_LORAWAN:
+            # ====== LoRaWAN MODE ======
+            if device:
+                device.close()
+                time.sleep(1)
+            
+            device = switch_to_lorawan(port)
+            lorawan_sent = False
+            
+            # Tunggu sampai join berhasil
+            start_time = time.time()
+            while state != STATES.JOINED and (time.time() - start_time < 30):
+                time.sleep(0.1)
+            
             if state == STATES.JOINED:
-                payload_text = "31;55;5"
-                payload_hex = ConvertData.str2hex(payload_text).encode()
-                device.send_payload(2, payload_hex)
+                print("Successfully joined LoRaWAN network")
+                # Kirim payload yang diterima dari P2P
+                if payload:
+                    try:
+                        payload_hex = ConvertData.str2hex(payload).encode()
+                        device.send_payload(2, payload_hex)
+                        print(f"Sending payload to LoRaWAN: {payload}")
+                        
+                        # Tunggu konfirmasi pengiriman
+                        start_time = time.time()
+                        while not lorawan_sent and (time.time() - start_time < 30):
+                            time.sleep(0.1)
+                        
+                        if lorawan_sent:
+                            print("Payload successfully sent via LoRaWAN")
+                            payload = ""  # Reset payload
+                    except Exception as e:
+                        print(f"Error sending LoRaWAN payload: {str(e)}")
             
-        # Clean up LoRaWAN mode
-        device.close()
-        time.sleep(1)
+            # Kembali ke mode P2P
+            device.close()
+            time.sleep(1)
+            state = STATES.WAITING_P2P_DATA
+
+        time.sleep(0.1)  # Small delay to prevent CPU overuse
