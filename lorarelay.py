@@ -16,7 +16,7 @@ class STATES:
     JOINED = 3
 
 # Inisialisasi Serial ke RAK3172 (Sesuaikan Port)
-serial_port = "/dev/tty.usbserial-1120"  # Ganti sesuai dengan port Node 2
+serial_port = "/dev/tty.usbserial-10"  # Ganti sesuai dengan port Node 2
 baud_rate = 115200
 
 ser = None
@@ -71,7 +71,7 @@ def set_mode_p2p():
     time.sleep(1)
     send_command("AT")  # Cek koneksi
     send_command("AT+NWM=0")  # Mode P2P
-    # send_command("AT+NJM=0")  # Non-Join Mode
+    send_command("AT+NJM=0")  # Non-Join Mode
 
     # Konfigurasi P2P (Harus Sama dengan Node 1)
     send_command("AT+PFREQ=868000000")  # Frekuensi 868 MHz
@@ -116,20 +116,23 @@ def main():
     while True:
         if state == STATES.RECEIVE_P2P:
             # Menerima data P2P
-            send_command("AT+PRECV=0")  # Reset penerimaan
-            time.sleep(0.5)
+            # send_command("AT+PRECV=0")  # Reset penerimaan
+            # time.sleep(0.5)
             status = send_command("AT+PRECV=65535")  # Aktifkan penerimaan
-            time.sleep(0.5)
+            time.sleep(1)
+            # logging.info(f"[STATUS] {response}")
             # response = send_command("AT+RECV=?")
-            response = ser.read(ser.inWaiting()).decode(errors='ignore')
+            # response = ser.read(ser.inWaiting()).decode(errors='ignore')
+            response = ser.readline().decode(errors='ignore')
             logging.info(f"[RECEIVED RAW] {response}")
 
             # time.sleep(1)
             if response:
                 parts = response.split(":")
                 hex_payload = parts[-1].strip()  # Ambil payload HEX
-                logging.info(f"📦 Payload HEX: {hex_payload}")
-                received_data = hex_payload
+                received_message = bytes.fromhex(hex_payload).decode(errors='ignore') 
+                logging.info(f"📦 Payload HEX: {received_message}")
+                received_data = received_message
                 state = STATES.SEND_LORAWAN  # Pindah ke mode LoRaWAN
 
         elif state == STATES.SEND_LORAWAN:
