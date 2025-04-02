@@ -4,6 +4,7 @@ import logging
 from rak3172 import RAK3172
 import signal
 from data import ConvertData
+import sys
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -14,145 +15,116 @@ class STATES:
     JOINING = 2
     JOINED = 3
 
-# Inisialisasi Serial ke RAK3172 (Sesuaikan Port)
-serial_port = "/dev/tty.usbserial-1120"  # Ganti sesuai dengan port Node 2
-baud_rate = 115200
-
-ser = None
 device = None
-state = STATES.RECEIVE_P2P
-received_data = None
+state = None
+payload = ""
 
-def send_command(command, delay=0.5):
-    """Mengirim perintah AT dan membaca respons"""
-    ser.write((command + "\r\n").encode())  # Kirim perintah
-    time.sleep(delay)
-    
-    response = ser.read(ser.inWaiting()).decode(errors='ignore')  # Baca respons
-    logging.info(f"> {command}")  # Log perintah
-    logging.info(f"< {response}")  # Log respons dari LoRa
-
-    return response
 
 def events(type, parameter):
-    global state
+    """Callback for incoming data events"""
+    global state, payload
+
     if type == RAK3172.EVENTS.JOINED:
         state = STATES.JOINED
-        logging.info("EVENT - Joined")
+        print("EVENT - Joined")
     elif type == RAK3172.EVENTS.SEND_CONFIRMATION:
-        logging.info(f"EVENT - Confirmed: {parameter}")
-        state = STATES.RECEIVE_P2P  # Kembali ke mode P2P setelah mengirim
+        print(f"EVENT - Confirmed: {parameter}")
+        state = STATES.SEND_LORAWAN
+    elif type == RAK3172.EVENTS.RECEIVED:
+        payload = bytes.fromhex(parameter).decode(errors='ignore')
+        print(f"EVENT - Data: {payload}")
+        state = STATES.RECEIVE_P2P
     else:
-        logging.warning(f"EVENT - Unknown event {type}")
+        print("EVENT - Unknown event {type}")
+
+    # if event_type == RAK3172.EVENTS.RECEIVED:
+    #     print(f"Data diterima:{bytes.fromhex(parameter).decode(errors='ignore')}")
+
+def handler_timeout_tx(signal, frame):
+    print("Timeout occurred during transmission")
+    global state
+    state = STATES.SEND_DATA
 
 def handler_sigint(signal, frame):
-    """Menangani sinyal SIGINT (Ctrl+C) untuk keluar dengan aman."""
-    logging.info("SIGINT received, exiting...")
-    if device:
-        device.close()
-    if ser:
-        ser.close()
+    print("SIGINT received, exiting...")
+    device.close()
     sys.exit(0)
 
-def set_mode_p2p():
-    """Mengatur modul ke mode P2P"""
-    global ser
-    try:
-        ser = serial.Serial(serial_port, baudrate=baud_rate, timeout=1)
-        logging.info(f"[OK] Terhubung ke {serial_port}")
-    except serial.SerialException as e:
-        logging.error(f"[ERROR] Port {serial_port} tidak ditemukan! Aborting. Error: {e}")
-        sys.exit(1)
-
-    # Pastikan LoRa dalam mode P2P
-    send_command("AT+PRECV=0")  # Matikan mode penerimaan
-    time.sleep(1)
-    send_command("AT")  # Cek koneksi
-    send_command("AT+NWM=0")  # Mode P2P
-
-    # Konfigurasi P2P (Harus Sama dengan Node 1)
-    send_command("AT+PFREQ=868000000")  # Frekuensi 868 MHz
-    send_command("AT+PSF=7")  # Spreading Factor 7
-    send_command("AT+PBW=125")  # Bandwidth 125 kHz
-    send_command("AT+PCR=1")  # Coding Rate 4/5
-    send_command("AT+PPL=8")  # Preamble Length 8
-    send_command("AT+PTP=20")  # TX Power 20 dBm
-
-    ser.reset_input_buffer()
-
-def set_mode_lorawan():
-    """Mengatur modul ke mode LoRaWAN dan bergabung dengan jaringan"""
-    global device, state
+def switch_to_p2p(port):
+    print("Initializing P2P mode...")
     device = RAK3172(
-        serial_port=serial_port,
+        serial_port=port,
+        network_mode=RAK3172.NETWORK_MODES.P2P,
+        verbose=False,
+        callback_events=events,
+    )
+    device.configure_p2p(
+        frequency=868000000,
+        spreading_factor=7,
+        bandwidth=125,
+        coding_rate=1,
+        preamble=8,
+        tx_power=20
+    )
+    return device
+
+def switch_to_lorawan(port):
+    print("Initializing LoRaWAN mode...")
+    device = RAK3172(
+        serial_port=port,
         network_mode=RAK3172.NETWORK_MODES.LORAWAN,
         verbose=False,
         callback_events=events,
     )
-    device.deveui = "70B3D57ED09F6A7B"  # Ganti dengan DEVEUI Anda
-    device.joineui = "0000000000000000"  # Ganti dengan JoinEUI Anda
-    device.appkey = "4EE7845FA0A5BA6D81389261A7140E5B"  # Ganti dengan APPKEY Anda
+    device.deveui = "70B3D57ED09F6A7B"
+    device.joineui = "0000000000000000"
+    device.appkey = "4EE7845FA0A5BA6D81389261A7140E5B"
     device.join()
-    state = STATES.JOINING
+    return device
 
-def send_data_via_lorawan(data):
-    """Mengirim data melalui LoRaWAN"""
-    if state == STATES.JOINED:
-        logging.info(f"Mengirim data: {data}")
-        payload_text = "31;55;5"  # Contoh payload
-        payload_hex = ConvertData.str2hex(payload_text).encode()
-        device.send_payload(2, payload_hex)
-    else:
-        logging.warning("Device belum bergabung dengan jaringan LoRaWAN")
+if __name__ == "__main__":
 
-def process_p2p_response(response):
-    """Memproses respons dari mode P2P dan mengekstrak payload."""
-    global received_data
-    if "+EVT:RXP2P" in response:
-        try:
-            parts = response.split(":")
-            hex_payload = parts[-1].strip()  # Ambil payload HEX
-            logging.info(f"📦 Payload HEX: {hex_payload}")
-            received_data = hex_payload
-            return True
-        except IndexError:
-            logging.warning("[WARNING] Gagal mengambil payload!")
-    return False
+    port = str(sys.argv[1])
 
-def main():
-    global state, received_data
+    # Prepare signal management
+    signal.signal(signal.SIGALRM, handler_timeout_tx)
     signal.signal(signal.SIGINT, handler_sigint)
-    set_mode_p2p()
-    logging.info("[READY] Node siap menerima data P2P...")
 
     while True:
-        if state == STATES.RECEIVE_P2P:
-            # Menerima data P2P
-            send_command("AT+PRECV=0")  # Reset penerimaan
-            time.sleep(0.5)
-            send_command("AT+PRECV=65535")  # Aktifkan penerimaan
-            time.sleep(0.5)
 
-            response = ser.read(ser.inWaiting()).decode(errors='ignore')
-            if response:
-                logging.info(f"[RECEIVED RAW] {response}")
-                if process_p2p_response(response):
-                    state = STATES.SEND_LORAWAN  # Pindah ke mode LoRaWAN
+        # ====== P2P ======
+        # Switch to P2P mode
+        device = switch_to_p2p(port)
+        print("Operating in P2P mode for 10 seconds")
+            
+        # Operate in P2P mode
+        start_time = time.time()
+        while time.time() - start_time < 10:
+            # Your P2P operations here
+            time.sleep(1)
+            
+        # DISABLE P2P
+        device.send_command("AT+PRECV=0")
+        # Clean up P2P mode
+        device.close()            
+        time.sleep(1)  # Small delay before switching
 
-        elif state == STATES.SEND_LORAWAN:
-            # Mengirim data ke LoRaWAN
-            set_mode_lorawan()
-            # if state == STATES.JOINED:
-            #     send_data_via_lorawan(received_data)
-            #     state = STATES.RECEIVE_P2P  # Kembali ke mode P2P setelah mengirim
-            #     set_mode_p2p()
-            # else:
-            logging.warning("Menunggu bergabung dengan jaringan LoRaWAN...")
-            time.sleep(5)  # Tunggu sebelum mencoba lagi
-        elif state == STATES.JOINED:
-            send_data_via_lorawan(received_data)
-            time.sleep(5)
-            state = STATES.RECEIVE_P2P  # Kembali ke mode P2P setelah mengirim
-            set_mode_p2p()
-if __name__ == "__main__":
-    main()
+
+        # ====== LoRaWAN ====== 
+        # Switch to LoRaWAN mode
+        device = switch_to_lorawan(port)
+        print("Operating in LoRaWAN mode for 20 seconds")
+            
+        # Operate in LoRaWAN mode
+        start_time = time.time()
+        while time.time() - start_time < 20:
+            # Your LoRaWAN operations here
+            time.sleep(1)
+            if state == STATES.JOINED:
+                payload_text = "31;55;5"
+                payload_hex = ConvertData.str2hex(payload_text).encode()
+                device.send_payload(2, payload_hex)
+            
+        # Clean up LoRaWAN mode
+        device.close()
+        time.sleep(1)

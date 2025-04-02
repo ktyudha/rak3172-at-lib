@@ -16,7 +16,7 @@ class STATES:
     JOINED = 3
 
 # Inisialisasi Serial ke RAK3172 (Sesuaikan Port)
-serial_port = "/dev/tty.usbserial-10"  # Ganti sesuai dengan port Node 2
+serial_port = "/dev/tty.usbserial-1120"  # Ganti sesuai dengan port Node 2
 baud_rate = 115200
 
 ser = None
@@ -116,10 +116,10 @@ def main():
     while True:
         if state == STATES.RECEIVE_P2P:
             # Menerima data P2P
-            # send_command("AT+PRECV=0")  # Reset penerimaan
-            # time.sleep(0.5)
+            send_command("AT+PRECV=0")  # Reset penerimaan
+            time.sleep(0.5)
             status = send_command("AT+PRECV=65535")  # Aktifkan penerimaan
-            time.sleep(1)
+            time.sleep(0.5)
             # logging.info(f"[STATUS] {response}")
             # response = send_command("AT+RECV=?")
             # response = ser.read(ser.inWaiting()).decode(errors='ignore')

@@ -78,6 +78,12 @@ class RAK3172:
                         self.__callback_events(RAK3172.EVENTS.SEND_CONFIRMATION, True)
                     else:
                         self.__callback_events(RAK3172.EVENTS.SEND_CONFIRMATION, False)
+
+                if "+EVT:RXP2P" in rx:
+                    # Event P2P diterima
+                    payload = rx.split(":")[-1].strip()
+                    self.__callback_events(RAK3172.EVENTS.RECEIVED, payload)
+
             else:
                 self.data_rx = rx
                 self.data_received.set()
@@ -250,14 +256,14 @@ class RAK3172:
         """
         Konfigurasi perangkat ke mode P2P dengan parameter yang diberikan
         """
-        self.send_command("AT+PRECV=0")
+        self.send_command("AT+NWM=0")
         self.send_command(f"AT+PFREQ={frequency}")  # Set frekuensi LoRa
         self.send_command(f"AT+PSF={spreading_factor}")  # Set spreading factor
         self.send_command(f"AT+PBW={bandwidth}")  # Set bandwidth
         self.send_command(f"AT+PCR={coding_rate}")  # Set coding rate
         self.send_command(f"AT+PPL={preamble}")  # Sesuaikan dengan perintah AT yang benar
         self.send_command(f"AT+PTP={tx_power}") # TX power
-        self.send_command("AT+PRECV=65534")
+        self.send_command("AT+PRECV=65533")
         print("P2P mode configured successfully!")
 
     def enable_p2p_rx(self):
@@ -266,7 +272,7 @@ class RAK3172:
         """
         self.send_command("AT+PRECV=0")  # Reset buffer RX
         time.sleep(0.5)
-        self.send_command("AT+PRECV=65534")  # Aktifkan RX terus-menerus
+        self.send_command("AT+PRECV=65535")  # Aktifkan RX terus-menerus
         time.sleep(0.5)
         print("P2P RX enabled and listening for packets...")
 
@@ -287,6 +293,5 @@ class RAK3172:
         if status != "OK":
             print("ERROR - Unable to get data")
             exit()
-
         
-        return self.serial.readline().decode(errors='ignore')
+        return data

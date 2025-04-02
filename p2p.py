@@ -13,29 +13,7 @@ def hex_dump(data):
 def events(event_type, parameter):
     """Callback for incoming data events"""
     if event_type == RAK3172.EVENTS.RECEIVED:
-        rssi = device.rssi
-        snr = device.snr
-        try:
-            # Try to decode as string
-            data_str = parameter.decode('utf-8')
-            print(f"EVENT - Data Received: {data_str}")
-            
-            # If it's RSSI data (from ESP32)
-            if ',' in data_str:
-                parts = data_str.split(',')
-                if len(parts) >= 2:
-                    node_rssi = parts[0]
-                    node_snr = parts[1]
-                    print(f"Node RSSI: {node_rssi}, Node SNR: {node_snr}")
-            
-        except UnicodeDecodeError:
-            print("EVENT - Binary Data Received")
-        
-        print(f"RSSI: {rssi}, SNR: {snr}")
-        hex_dump(parameter)
-
-        # Send back RSSI and SNR data
-        send_rssi_data(rssi, snr)
+        print(f"Data diterima:{bytes.fromhex(parameter).decode(errors='ignore')}")
 
 def handler_sigint(signal, frame):
     """Handle Ctrl+C interrupt"""
@@ -88,5 +66,5 @@ if __name__ == "__main__":
 
     # Main loop
     while True:
-        # You can add periodic transmissions here if needed
-        time.sleep(5)
+        time.sleep(1)
+        

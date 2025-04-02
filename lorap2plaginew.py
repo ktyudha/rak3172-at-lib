@@ -47,11 +47,12 @@ send_command("AT+PRECV=65534")
 print("[READY] Node 2 siap menerima data...")
 
 while True:
-    response = ser.readline().decode(errors='ignore')  # Baca data masuk
-    if response:
-        print(f"[RECEIVED RAW] {response}")  # Debugging: Print semua data masuk
+    # response = ser.readline().decode(errors='ignore')  # Baca data masuk
+    response = ser.read_until(b"\r\n").decode("ASCII").rstrip().upper()  # Baca data masuk
+    # if response:
+    print(f"[RECEIVED RAW] {response}")  # Debugging: Print semua data masuk
 
-    if "+EVT:RXP2P" in response:
-            hex_data = response.split(":")[-1].strip()  # Ambil bagian HEX
-            received_message = bytes.fromhex(hex_data).decode(errors='ignore')  # Konversi HEX ke teks
-            print(f"📩 Pesan diterima: {received_message}")
+    # if "+EVT:RXP2P" in response:
+    #         hex_data = response.split(":")[-1].strip()  # Ambil bagian HEX
+    #         received_message = bytes.fromhex(hex_data).decode(errors='ignore')  # Konversi HEX ke teks
+    #         print(f"📩 Pesan diterima: {received_message}")
