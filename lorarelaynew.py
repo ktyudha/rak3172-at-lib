@@ -47,6 +47,7 @@ def handler_timeout_tx(signal, frame):
 def handler_sigint(signal, frame):
     print("SIGINT received, exiting...")
     if device:
+        device.send_command("AT+PRECV=0")
         device.close()
     sys.exit(0)
 
