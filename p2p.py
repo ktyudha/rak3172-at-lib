@@ -18,7 +18,9 @@ def events(event_type, parameter):
 def handler_sigint(signal, frame):
     """Handle Ctrl+C interrupt"""
     print("Stopping device...")
-    device.close()
+    if device:
+        device.send_command("AT+PRECV=0")
+        device.close()
     sys.exit(0)
 
 def send_rssi_data(node_rssi, node_snr):
