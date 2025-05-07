@@ -11,23 +11,34 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def events(type, parameter):
     """Callback for incoming data events"""
     if type == RAK3172.EVENTS.RECEIVED:
-        payload_bytes = bytes.fromhex(parameter)
-        payload = payload_bytes.decode(errors='ignore')
-        
-        client_address = payload_bytes[0]
-        server_address = payload_bytes[1]
+        try:
+            # Konversi payload hex ke bytes
+            payload_bytes = bytes.fromhex(parameter)
+            
+            # Ambil byte ke-0 dan ke-1
+            if len(payload_bytes) >= 2:
+                client_address = payload_bytes[0]
+                server_address = payload_bytes[1]
                 
-        print(f"Dari: {client_address}, Ke: {server_address}")
-        print(f"Data received: {payload}")
-        # Lakukan sesuatu dengan payload yang diterima
-        process_payload(payload)
-    else:
-        print(f"EVENT - Unknown event {type}")
+                print(f"Dari: {client_address}, Ke: {server_address}")
+                
+                # Sisakan payload setelah 2 byte pertama jika perlu
+                remaining_payload = payload_bytes[2:].decode(errors='ignore')
+                if remaining_payload:
+                    print(f"Payload lainnya: {remaining_payload}")
+                
+                # Process the complete payload if needed
+                process_payload(payload_bytes)
+            else:
+                print("Payload terlalu pendek, minimal 2 byte")
+                
+        except Exception as e:
+            print(f"Error processing payload: {str(e)}")
 
-def process_payload(payload):
-    """Process the received payload"""
-    # Tambahkan logika pemrosesan data di sini
-    print(f"Processing payload: {payload}")
+def process_payload(payload_bytes):
+    """Process the complete payload bytes"""
+    # Tambahkan logika pemrosesan data lengkap di sini
+    print(f"Processing complete payload: {payload_bytes.hex()}")
 
 def handler_sigint(signal, frame):
     print("SIGINT received, exiting...")
@@ -50,7 +61,7 @@ def init_p2p_mode(port):
         bandwidth=125,            # 125 kHz
         coding_rate=1,            # Coding rate 4/5
         preamble=8,               # Preamble length 8
-        tx_power=20,              # TX power 20 dBm
+        tx_power=20,             # TX power 20 dBm
     )
     return device
 
