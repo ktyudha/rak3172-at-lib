@@ -19,7 +19,7 @@ SERVER_ADDRESS = 3
 
 MQTT_BROKER_WS = "mqtt.ktyudha.site"
 MQTT_PORT_WS = 80  # 80 untuk ws://, 443 untuk wss://
-MQTT_TOPIC = "v1/devices/uplink-tes"
+MQTT_TOPIC = "v1/devices/uplink-p2p"
 MQTT_USERNAME = "barjon"
 MQTT_PASSWORD = "password" 
 
@@ -74,8 +74,7 @@ def process_payload(fromAddr, toAddr, rssi, snr, payload):
         phosphorus = parts[4]
         potassium = parts[5]
 
-        mqtt_payload = [
-            {
+        mqtt_payload = {
                 "metadata": {"rssi": rssi, "snr": snr},
                 "uplink": {
                     "temperature": temperature,
@@ -86,16 +85,15 @@ def process_payload(fromAddr, toAddr, rssi, snr, payload):
                     "potassium": potassium,
                 },
                 "address": {"from": fromAddr, "to": toAddr},
-                "timestamp": int(time.time())
-            }
-        ]
+                "timestamp": int(round(time.time() * 1000)) # sampai ms
+        }
 
         # Check Log
         logging.info("Processing payload:")
         logging.info(json.dumps(mqtt_payload, indent=2))
 
         # Kirim melalui MQTT
-        mqttc.publish("v1/devices/uplink-tes", json.dumps(mqtt_payload, indent=2))
+        mqttc.publish(MQTT_TOPIC, json.dumps(mqtt_payload, indent=2))
     except Exception as e:
         print(f"Failed to process payload: {e}")
 
