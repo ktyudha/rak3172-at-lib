@@ -2,10 +2,9 @@ import time
 import paho.mqtt.client as mqtt
 
 class MQTTClient:
-    def __init__(self, broker, port, topic, username, password, transport='websockets'):
+    def __init__(self, broker, port, username, password, transport='websockets'):
         self.broker = broker
         self.port = port
-        self.topic = topic
         self.username = username
         self.password = password
         self.client = mqtt.Client(transport=transport)
@@ -23,18 +22,18 @@ class MQTTClient:
         self.client.connect(self.broker, self.port, keepalive=60)
         self.client.loop_start()  # Non-blocking
 
-    def publish_loop(self, message="hello!", interval=2):
+    def publish_loop(self, topic, message="hello!", interval=2):
         try:
             while True:
-                self.client.publish(self.topic, message, qos=0)
+                self.client.publish(topic, message, qos=0)
                 print(f"Published: {message}")
                 time.sleep(interval)
         except KeyboardInterrupt:
             print("Stopped publishing.")
             self.client.loop_stop()
     
-    def publish(self, message="hello!"):
-        self.client.publish(self.topic, message, qos=0)
+    def publish(self, topic, message="hello!"):
+        self.client.publish(topic, message, qos=0)
 
     def on_connect(self, client, userdata, flags, rc):
         print("rc:", str(rc))

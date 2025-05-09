@@ -81,8 +81,17 @@ class RAK3172:
 
                 if "+EVT:RXP2P" in rx:
                     # Event P2P diterima
-                    payload = rx.split(":")[-1].strip()
-                    self.__callback_events(RAK3172.EVENTS.RECEIVED, payload)
+                    # payload = rx.split(":")[-1].strip()
+                    # self.__callback_events(RAK3172.EVENTS.RECEIVED, payload)
+
+                    ### Event P2P new
+                    parts = rx.split(":")
+                    if len(parts) >= 5:
+                        rssi = parts[2].strip()
+                        snr = parts[3].strip()
+                        payload = parts[4].strip()
+                        combined = f"{rssi}:{snr}:{payload}"
+                        self.__callback_events(RAK3172.EVENTS.RECEIVED, combined)
 
             else:
                 self.data_rx = rx
