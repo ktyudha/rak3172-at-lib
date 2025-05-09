@@ -1,12 +1,18 @@
 import serial
 import time
 import logging
-from rak3172 import RAK3172
 import signal
 import sys
+from rak3172 import RAK3172
+from mqtt import MQTTClient
+from datetime import datetime
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+mqttc = None
+
+RELAY_ADDRESS = 2
+SERVER_ADDRESS = 3
 
 def events(type, parameter):
     """Callback for incoming data events"""
@@ -16,6 +22,16 @@ def events(type, parameter):
         
         client_address = payload_bytes[0]
         server_address = payload_bytes[1]
+
+        # Batasi hanya menerima dari relay
+        if client_address != RELAY_ADDRESS:
+            print(f"Ignored packet from unknown node {client_address}")
+            return
+        
+        # Optional: pastikan alamat tujuan adalah gateway
+        if server_address != SERVER_ADDRESS:
+            print(f"Paket bukan untuk gateway (tujuan: {server_address})")
+            return
                 
         print(f"Dari: {client_address}, Ke: {server_address}")
         print(f"Data received: {payload}")
@@ -28,6 +44,10 @@ def process_payload(payload):
     """Process the received payload"""
     # Tambahkan logika pemrosesan data di sini
     print(f"Processing payload: {payload}")
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    payload_with_timestamp = f"{timestamp} - {payload}"
+    mqttc.publish(payload_with_timestamp)
+    # mqttc.publish(payload)
 
 def handler_sigint(signal, frame):
     print("SIGINT received, exiting...")
@@ -54,6 +74,18 @@ def init_p2p_mode(port):
     )
     return device
 
+def init_mqtt():
+    print("Initializing MQTT...")
+    mqttc = MQTTClient(
+        broker="mqtt.ktyudha.site",
+        port=80,
+        topic="v1/devices/uplink-tes",
+        username="barjon",
+        password="password"
+    )
+    mqttc.connect()
+    return mqttc
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python script.py <serial_port>")
@@ -65,6 +97,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, handler_sigint)
     
     try:
+        # Inisialisasi mqtt
+        mqttc = init_mqtt()
         # Inisialisasi device dalam mode P2P
         device = init_p2p_mode(port)
         
