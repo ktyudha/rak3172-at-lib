@@ -45,13 +45,13 @@ def events(type, parameter):
         payload = payload_bytes[2:].decode(errors='ignore')
 
         # Batasi hanya menerima dari relay
-        if client_address != RELAY_ADDRESS:
-            print(f"Ignored packet from unknown node {client_address}")
+        if fromAddr != RELAY_ADDRESS:
+            print(f"Ignored packet from unknown node {fromAddr}")
             return
         
         # Optional: pastikan alamat tujuan adalah gateway
-        if server_address != SERVER_ADDRESS:
-            print(f"Paket bukan untuk gateway (tujuan: {server_address})")
+        if toAddr != SERVER_ADDRESS:
+            print(f"Paket bukan untuk gateway (tujuan: {toAddr})")
             return
 
         process_payload(fromAddr, toAddr, rssi, snr, payload)
