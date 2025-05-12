@@ -42,7 +42,7 @@ def events(type, parameter):
         fromAddr = payload_bytes[0]
         toAddr = payload_bytes[1]
 
-        payload = payload_bytes[2:].decode(errors='ignore')
+        payload = payload_bytes[2:].decode("utf-8", errors='ignore').strip()
 
         # Batasi hanya menerima dari relay
         if fromAddr != RELAY_ADDRESS:
@@ -62,7 +62,7 @@ def process_payload(fromAddr, toAddr, rssi, snr, payload):
     """Process the received payload"""
 
     try:
-        parts = payload.split(";")
+        parts = payload.split(";")[:6]
         if len(parts) < 6 :
             print("Payload tidak lengkap")
             return
