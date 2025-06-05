@@ -67,8 +67,8 @@ def process_payload(fromAddr, toAddr, rssi, snr, payload):
             print("Payload tidak lengkap")
             return
 
-        temperature = int(parts[0])
-        humidity = int(parts[1])
+        temperature = float(parts[0])
+        humidity = float(parts[1])
         ph = float(parts[2])
         nitrogen = int(parts[3])
         phosphorus = int(parts[4])
