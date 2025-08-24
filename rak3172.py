@@ -304,3 +304,12 @@ class RAK3172:
             exit()
         
         return data
+
+    def send_p2p_payload(self, payload, confirmed=False):
+        # TODO - Implement confirm messages
+        status, _ = self.send_command(f'AT+PSEND={payload}')
+        print(status)
+        if status != "OK":
+            print("ERROR - Unable to send payload")
+            return False
+        return True

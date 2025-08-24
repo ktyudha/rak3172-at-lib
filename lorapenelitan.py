@@ -14,6 +14,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 device = None
 mqttc = None
 
+CLIENT_ADDRESS = 1
 RELAY_ADDRESS = 2
 SERVER_ADDRESS = 3
 
@@ -30,8 +31,12 @@ LORA_CR=1
 LORA_PPL=8
 LORA_TXP=20
 
+FALLBACK_TIMEOUT = 5  # detik idle sebelum request relay
+last_direct_rx_time = 0  # timestamp terakhir menerima data langsung dari Node
+
 def events(type, parameter):
     """Callback for incoming data events"""
+    global last_direct_rx_time
     if type == RAK3172.EVENTS.RECEIVED:
         rssi, snr, hex_payload = parameter.split(":")
 
@@ -45,14 +50,13 @@ def events(type, parameter):
         payload = payload_bytes[2:].decode("utf-8", errors='ignore').strip()
 
         # Batasi hanya menerima dari relay
-        # if fromAddr != RELAY_ADDRESS:
-        #     print(f"Ignored packet from unknown node {fromAddr}")
-        #     return
+        if fromAddr == CLIENT_ADDRESS:
+            last_direct_rx_time = time.time()
         
-        # # Optional: pastikan alamat tujuan adalah gateway
-        # if toAddr != SERVER_ADDRESS:
-        #     print(f"Paket bukan untuk gateway (tujuan: {toAddr})")
-        #     return
+        # Optional: pastikan alamat tujuan adalah gateway
+        if toAddr != SERVER_ADDRESS:
+            print(f"Paket bukan untuk gateway (tujuan: {toAddr})")
+            return
 
         process_payload(fromAddr, toAddr, rssi, snr, payload)
     else:
@@ -150,9 +154,19 @@ if __name__ == "__main__":
         device = init_p2p_mode(port)
         
         print("Listening for P2P data... (Press Ctrl+C to stop)")
-        
-        # Loop utama - device akan memanggil callback events ketika data diterima
+    
         while True:
+            now = time.time()
+
+            if now - last_direct_rx_time > FALLBACK_TIMEOUT:
+                payload_bytes = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'REQ'
+
+                success = device.send_p2p_payload(payload_bytes.hex())
+                if success:
+                    print("REQ berhasil dikirim ke Relay")
+                else:
+                    print("Gagal kirim REQ")
+                last_direct_rx_time = now
             time.sleep(1)  # Kurangi penggunaan CPU
             
     except Exception as e:
