@@ -31,6 +31,7 @@ LORA_CR=1
 LORA_PPL=8
 LORA_TXP=20
 
+RELAY_MODE = False
 FALLBACK_TIMEOUT = 5  # detik idle sebelum request relay
 last_direct_rx_time = 0  # timestamp terakhir menerima data langsung dari Node
 
@@ -52,6 +53,20 @@ def events(type, parameter):
         # Batasi hanya menerima dari relay
         if fromAddr == CLIENT_ADDRESS:
             last_direct_rx_time = time.time()
+
+            global RELAY_MODE
+            if RELAY_MODE:
+                try:
+                    payload_bytes = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'RES'
+                    success = device.send_p2p_payload(payload_bytes.hex())
+
+                    if success:
+                        print("RES berhasil dikirim ke Relay, hentikan fallback")
+                    else:
+                        print("Gagal kirim RES ke Relay")
+                except Exception as e:
+                    print(f"Error saat kirim RES ke Relay: {e}")
+                RELAY_MODE = False
         
         # Optional: pastikan alamat tujuan adalah gateway
         if toAddr != SERVER_ADDRESS:
@@ -158,15 +173,15 @@ if __name__ == "__main__":
         while True:
             now = time.time()
 
-            if now - last_direct_rx_time > FALLBACK_TIMEOUT:
+            if now - last_direct_rx_time > FALLBACK_TIMEOUT and (not RELAY_MODE):
                 payload_bytes = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'REQ'
 
                 success = device.send_p2p_payload(payload_bytes.hex())
                 if success:
                     print("REQ berhasil dikirim ke Relay")
+                    RELAY_MODE = True
                 else:
                     print("Gagal kirim REQ")
-                last_direct_rx_time = now
             time.sleep(1)  # Kurangi penggunaan CPU
             
     except Exception as e:
