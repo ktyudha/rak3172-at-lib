@@ -44,7 +44,7 @@ def events(type, parameter):
 
         payload = payload_bytes[2:].decode("utf-8", errors='ignore').strip()
 
-        Batasi hanya menerima dari relay
+        # Batasi hanya menerima dari relay
         if fromAddr != RELAY_ADDRESS:
             print(f"Ignored packet from unknown node {fromAddr}")
             return
