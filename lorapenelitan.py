@@ -173,7 +173,7 @@ if __name__ == "__main__":
         while True:
             now = time.time()
 
-            if now - last_direct_rx_time > FALLBACK_TIMEOUT and (not RELAY_MODE):
+            if last_direct_rx_time != 0 and now - last_direct_rx_time > FALLBACK_TIMEOUT and (not RELAY_MODE):
                 payload_bytes = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'REQ'
 
                 success = device.send_p2p_payload(payload_bytes.hex())
