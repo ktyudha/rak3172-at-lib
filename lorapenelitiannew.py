@@ -42,6 +42,12 @@ set_state(STATE_IDLE)
 WAIT_RELAY_TIMEOUT = 30  # detik
 wait_relay_start = None
 
+def set_state(new_state):
+    global current_state
+    if current_state != new_state:
+        logging.info(f"STATE berubah: {current_state} -> {new_state}")
+    current_state = new_state
+    
 def events(type, parameter):
     """Callback for incoming data events"""
     global last_direct_rx_time
@@ -79,12 +85,6 @@ def events(type, parameter):
         process_payload(fromAddr, toAddr, rssi, snr, payload)
     else:
         print(f"EVENT - Unknown event {type}")
-
-def set_state(new_state):
-    global current_state
-    if current_state != new_state:
-        logging.info(f"STATE berubah: {current_state} -> {new_state}")
-    current_state = new_state
 
 def send_payload_safe(hex_payload, retries=3):
     for i in range(retries):
