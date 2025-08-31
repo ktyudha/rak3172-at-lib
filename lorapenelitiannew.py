@@ -67,12 +67,8 @@ def events(type, parameter):
             if current_state == STATE_WAIT_RELAY:
                 # Kirim RES ke Relay
                 res_payload = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'RES'
-                if send_payload_safe(res_payload.hex()):
-                    logging.info("RES berhasil dikirim ke Relay")
-                else:
-                    logging.error("Gagal kirim RES ke Relay")
-                current_state = STATE_IDLE
-                wait_relay_start = None
+                send_queue.put(res_payload.hex())
+                set_state(STATE_IDLE)
         
         # Optional: pastikan alamat tujuan adalah gateway
         if toAddr != SERVER_ADDRESS:
