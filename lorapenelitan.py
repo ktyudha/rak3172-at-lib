@@ -58,16 +58,16 @@ def events(type, parameter):
 
             global RELAY_MODE
             if RELAY_MODE:
-                payload_bytes = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'RES'
                 if send_payload_safe(payload_bytes.hex()):
+                payload_bytes = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'RES'
                     logging.info("RES berhasil dikirim ke Relay")
                 else:
                     logging.error("Gagal kirim RES ke Relay")
                 RELAY_MODE = False
                 
-                # send_queue.put(payload_bytes.hex())
-                # print("Node terkoneksi langsung, kirim RES ke relay")
-                # RELAY_MODE = False
+                send_queue.put(payload_bytes.hex())
+                print("Node terkoneksi langsung, kirim RES ke relay")
+                RELAY_MODE = False
         
         # Optional: pastikan alamat tujuan adalah gateway
         if toAddr != SERVER_ADDRESS:
@@ -200,12 +200,11 @@ if __name__ == "__main__":
                     RELAY_MODE = True
                 else:
                     print("Gagal kirim REQ")
-                    RELAY_MODE = False
 
-            # if not send_queue.empty():
-            #     hex_payload = send_queue.get()
-            #     print(f"Mengirim dari queue: {hex_payload}")
-            #     send_payload_safe(hex_payload)
+            if not send_queue.empty():
+                hex_payload = send_queue.get()
+                print(f"Mengirim dari queue: {hex_payload}")
+                send_payload_safe(hex_payload)
 
             time.sleep(1)  # Kurangi penggunaan CPU
             
