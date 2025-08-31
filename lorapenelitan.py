@@ -37,6 +37,12 @@ RELAY_MODE = False
 FALLBACK_TIMEOUT = 5  # detik idle sebelum request relay
 last_direct_rx_time = 0  # timestamp terakhir menerima data langsung dari Node
 
+STATE_IDLE = 0
+STATE_WAIT_RELAY = 1
+current_state = STATE_IDLE
+WAIT_RELAY_TIMEOUT = 30  # detik
+wait_relay_start = None
+
 def events(type, parameter):
     """Callback for incoming data events"""
     global last_direct_rx_time

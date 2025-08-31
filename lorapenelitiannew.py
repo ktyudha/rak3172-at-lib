@@ -4,9 +4,12 @@ import logging
 import signal
 import sys
 import json
+import queue
 from rak3172 import RAK3172
 from mqtt import MQTTClient
+from datetime import datetime
 
+send_queue = queue.Queue()
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -18,61 +21,67 @@ RELAY_ADDRESS = 2
 SERVER_ADDRESS = 3
 
 MQTT_BROKER_WS = "mqtt.ktyudha.site"
-MQTT_PORT_WS = 80
+MQTT_PORT_WS = 80  # 80 untuk ws://, 443 untuk wss://
 MQTT_TOPIC = "v1/devices/uplink-p2p"
 MQTT_USERNAME = "barjon"
 MQTT_PASSWORD = "password" 
 
-LORA_SF = 7
-LORA_FREQ = 868000000
-LORA_BW = 125
-LORA_CR = 1
-LORA_PPL = 8
-LORA_TXP = 7
+LORA_SF=7
+LORA_FREQ=868000000
+LORA_BW=125
+LORA_CR=1
+LORA_PPL=8
+LORA_TXP=20
 
 FALLBACK_TIMEOUT = 5  # detik idle sebelum request relay
+last_direct_rx_time = 0  # timestamp terakhir menerima data langsung dari Node
 
 STATE_IDLE = 0
 STATE_WAIT_RELAY = 1
 current_state = STATE_IDLE
-
-last_direct_rx_time = 0
-
-def change_state(new_state):
-    global current_state
-    states = {STATE_IDLE: "IDLE", STATE_WAIT_RELAY: "WAIT_RELAY"}
-    logging.info(f"[STATE] {states[current_state]} → {states[new_state]}")
-    current_state = new_state
+WAIT_RELAY_TIMEOUT = 30  # detik
+wait_relay_start = None
 
 def events(type, parameter):
-    global last_direct_rx_time, current_state
+    """Callback for incoming data events"""
+    global last_direct_rx_time
+    global current_state
+    global wait_relay_start
+
     if type == RAK3172.EVENTS.RECEIVED:
         rssi, snr, hex_payload = parameter.split(":")
+
+        # Parsing payload
         payload_bytes = bytes.fromhex(hex_payload)
+
+        # Ambil Address
         fromAddr = payload_bytes[0]
         toAddr = payload_bytes[1]
+
         payload = payload_bytes[2:].decode("utf-8", errors='ignore').strip()
 
+        # Batasi hanya menerima dari relay
         if fromAddr == CLIENT_ADDRESS:
             last_direct_rx_time = time.time()
 
             if current_state == STATE_WAIT_RELAY:
                 # Kirim RES ke Relay
-                payload_bytes = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'RES'
-                logging.info("Node terdeteksi langsung, kirim RES ke Relay...")
-                if send_payload_safe(payload_bytes.hex()):
-                    logging.info("RES berhasil dikirim")
+                res_payload = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'RES'
+                if send_payload_safe(res_payload.hex()):
+                    logging.info("RES berhasil dikirim ke Relay")
                 else:
-                    logging.error("Gagal kirim RES")
-                change_state(STATE_IDLE)
-
+                    logging.error("Gagal kirim RES ke Relay")
+                current_state = STATE_IDLE
+                wait_relay_start = None
+        
+        # Optional: pastikan alamat tujuan adalah gateway
         if toAddr != SERVER_ADDRESS:
-            logging.warning(f"Paket bukan untuk gateway (tujuan: {toAddr})")
+            print(f"Paket bukan untuk gateway (tujuan: {toAddr})")
             return
 
         process_payload(fromAddr, toAddr, rssi, snr, payload)
     else:
-        logging.warning(f"EVENT - Unknown event {type}")
+        print(f"EVENT - Unknown event {type}")
 
 def send_payload_safe(hex_payload, retries=3):
     for i in range(retries):
@@ -81,25 +90,23 @@ def send_payload_safe(hex_payload, retries=3):
             time.sleep(0.2)
             success = device.send_p2p_payload(hex_payload)
             if success:
-                logging.info(f"TX sukses: {hex_payload}")
+                print(f"TX sukses: {hex_payload}")
                 time.sleep(0.2)
                 device.send_command("AT+PRECV=65534")
                 return True
         except Exception as e:
-            logging.error(f"Retry {i+1} gagal: {e}")
+            print(f"Retry {i+1} gagal: {e}")
         time.sleep(0.5)
-    logging.error(f"Gagal TX setelah {retries} percobaan")
-    try:
-        device.send_command("AT+PRECV=65534")  # pastikan kembali listen
-    except:
-        pass
+    print(f"Gagal TX setelah {retries} percobaan")
     return False
 
 def process_payload(fromAddr, toAddr, rssi, snr, payload):
+    """Process the received payload"""
+
     try:
         parts = payload.split(";")[:6]
-        if len(parts) < 6:
-            logging.error("Payload tidak lengkap")
+        if len(parts) < 6 :
+            print("Payload tidak lengkap")
             return
 
         temperature = float(parts[0])
@@ -110,35 +117,38 @@ def process_payload(fromAddr, toAddr, rssi, snr, payload):
         potassium = int(parts[5])
 
         mqtt_payload = {
-            "metadata": {"rssi": rssi, "snr": snr},
-            "uplink": {
-                "temperature": temperature,
-                "humidity": humidity,
-                "ph": ph,
-                "nitrogen": nitrogen,
-                "phossporus": phosphorus,
-                "potassium": potassium,
-            },
-            "address": {"from": fromAddr, "to": toAddr},
-            "timestamp": int(round(time.time() * 1000))
+                "metadata": {"rssi": rssi, "snr": snr},
+                "uplink": {
+                    "temperature": temperature,
+                    "humidity": humidity,
+                    "ph": ph,
+                    "nitrogen": nitrogen,
+                    "phossporus": phosphorus,
+                    "potassium": potassium,
+                },
+                "address": {"from": fromAddr, "to": toAddr},
+                "timestamp": int(round(time.time() * 1000)) # sampai ms
         }
 
+        # Check Log
         logging.info("Processing payload:")
         logging.info(json.dumps(mqtt_payload, indent=2))
 
+        # Kirim melalui MQTT
         mqttc.publish(MQTT_TOPIC, json.dumps(mqtt_payload, indent=2))
     except Exception as e:
-        logging.error(f"Failed to process payload: {e}")
+        print(f"Failed to process payload: {e}")
+
 
 def handler_sigint(signal, frame):
     print("SIGINT received, exiting...")
     if device:
-        device.send_command("AT+PRECV=0")
+        device.send_command("AT+PRECV=0")  # Nonaktifkan penerimaan P2P
         device.close()
     sys.exit(0)
 
 def init_p2p_mode(port):
-    logging.info("Initializing P2P mode...")
+    print("Initializing P2P mode...")
     device = RAK3172(
         serial_port=port,
         network_mode=RAK3172.NETWORK_MODES.P2P,
@@ -146,17 +156,17 @@ def init_p2p_mode(port):
         callback_events=events,
     )
     device.configure_p2p(
-        frequency=LORA_FREQ,
-        spreading_factor=LORA_SF,
-        bandwidth=LORA_BW,
-        coding_rate=LORA_CR,
-        preamble=LORA_PPL,
-        tx_power=LORA_TXP,
+        frequency=LORA_FREQ,      # Sesuaikan dengan frekuensi yang digunakan
+        spreading_factor=LORA_SF,       # SF7
+        bandwidth=LORA_BW,            # 125 kHz
+        coding_rate=LORA_CR,            # Coding rate 4/5
+        preamble=LORA_PPL,               # Preamble length 8
+        tx_power=LORA_TXP,              # TX power 20 dBm
     )
     return device
 
 def init_mqtt():
-    logging.info("Initializing MQTT...")
+    print("Initializing MQTT...")
     mqttc = MQTTClient(
         broker=MQTT_BROKER_WS,
         port=MQTT_PORT_WS,
@@ -172,32 +182,46 @@ if __name__ == "__main__":
         sys.exit(1)
         
     port = str(sys.argv[1])
+    
+    # Prepare signal management
     signal.signal(signal.SIGINT, handler_sigint)
     
     try:
+        # Inisialisasi mqtt & LoRa mode p2p
         mqttc = init_mqtt()
         device = init_p2p_mode(port)
         
-        logging.info("Listening for P2P data... (Press Ctrl+C to stop)")
+        print("Listening for P2P data... (Press Ctrl+C to stop)")
     
         while True:
             now = time.time()
 
-            if last_direct_rx_time != 0 and (now - last_direct_rx_time > FALLBACK_TIMEOUT):
-                if current_state == STATE_IDLE:
-                    payload_bytes = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'REQ'
-                    logging.info(f"[FALLBACK] {FALLBACK_TIMEOUT}s idle, kirim REQ ke Relay...")
-                    if send_payload_safe(payload_bytes.hex()):
-                        logging.info("REQ berhasil dikirim")
-                        change_state(STATE_WAIT_RELAY)
-                    else:
-                        logging.error("Gagal kirim REQ, tetap di IDLE")
+            if last_direct_rx_time != 0 and (now - last_direct_rx_time > FALLBACK_TIMEOUT) and current_state == STATE_IDLE:
+                payload_bytes = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'REQ'
 
-            time.sleep(1)
+                # success = device.send_p2p_payload(payload_bytes.hex())
+                if send_payload_safe(payload_bytes.hex()):
+                    print("REQ berhasil dikirim ke Relay")
+                    current_state = STATE_WAIT_RELAY
+                    wait_relay_start = now
+                else:
+                    print("Gagal kirim REQ")
+            
+            if current_state == STATE_WAIT_RELAY and (now - wait_relay_start > WAIT_RELAY_TIMEOUT):
+                logging.warning("Timeout menunggu Relay, kembali ke IDLE")
+                current_state = STATE_IDLE
+                wait_relay_start = None
+
+            if not send_queue.empty():
+                hex_payload = send_queue.get()
+                print(f"Mengirim dari queue: {hex_payload}")
+                send_payload_safe(hex_payload)
+
+            time.sleep(1)  # Kurangi penggunaan CPU
             
     except Exception as e:
-        logging.error(f"Error: {str(e)}")
+        print(f"Error: {str(e)}")
     finally:
         if 'device' in locals() and device:
-            device.send_command("AT+PRECV=0")
+            device.send_command("AT+PRECV=0")  # Pastikan penerimaan dinonaktifkan
             device.close()
