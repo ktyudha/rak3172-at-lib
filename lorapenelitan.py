@@ -59,16 +59,7 @@ def events(type, parameter):
                 try:
                     payload_bytes = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'RES'
                     
-                    device.send_command("AT+PRECV=0")
-                    time.sleep(0.1)
-
-                    success = False
-                    for i in range(3):
-                        success = device.send_p2p_payload(payload_bytes.hex())
-                        if success:
-                            break
-                        time.sleep(0.2)
-                    device.send_command("AT+PRECV=65534")
+                    success = send_payload_safe(payload_bytes.hex())
 
                     if success:
                         print("RES berhasil dikirim ke Relay, hentikan fallback")
@@ -86,6 +77,15 @@ def events(type, parameter):
         process_payload(fromAddr, toAddr, rssi, snr, payload)
     else:
         print(f"EVENT - Unknown event {type}")
+
+def send_payload_safe(hex_payload):
+    device.send_command("AT+PRECV=0")
+    time.sleep(0.1)
+    success = device.send_p2p_payload(hex_payload)
+    time.sleep(0.1)
+    device.send_command("AT+PRECV=65534")
+    return success
+
 
 def process_payload(fromAddr, toAddr, rssi, snr, payload):
     """Process the received payload"""
