@@ -38,7 +38,7 @@ last_direct_rx_time = 0  # timestamp terakhir menerima data langsung dari Node
 
 STATE_IDLE = 0
 STATE_WAIT_RELAY = 1
-current_state = STATE_IDLE
+set_state(STATE_IDLE)
 WAIT_RELAY_TIMEOUT = 30  # detik
 wait_relay_start = None
 
@@ -69,6 +69,7 @@ def events(type, parameter):
                 res_payload = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'RES'
                 send_queue.put(res_payload.hex())
                 set_state(STATE_IDLE)
+                wait_relay_start = None
         
         # Optional: pastikan alamat tujuan adalah gateway
         if toAddr != SERVER_ADDRESS:
@@ -78,6 +79,12 @@ def events(type, parameter):
         process_payload(fromAddr, toAddr, rssi, snr, payload)
     else:
         print(f"EVENT - Unknown event {type}")
+
+def set_state(new_state):
+    global current_state
+    if current_state != new_state:
+        logging.info(f"STATE berubah: {current_state} -> {new_state}")
+    current_state = new_state
 
 def send_payload_safe(hex_payload, retries=3):
     for i in range(retries):
@@ -198,14 +205,14 @@ if __name__ == "__main__":
                 # success = device.send_p2p_payload(payload_bytes.hex())
                 if send_payload_safe(payload_bytes.hex()):
                     print("REQ berhasil dikirim ke Relay")
-                    current_state = STATE_WAIT_RELAY
+                    set_state(STATE_WAIT_RELAY)
                     wait_relay_start = now
                 else:
                     print("Gagal kirim REQ")
             
             if current_state == STATE_WAIT_RELAY and (now - wait_relay_start > WAIT_RELAY_TIMEOUT):
                 logging.warning("Timeout menunggu Relay, kembali ke IDLE")
-                current_state = STATE_IDLE
+                set_state(STATE_IDLE)
                 wait_relay_start = None
 
             if not send_queue.empty():
