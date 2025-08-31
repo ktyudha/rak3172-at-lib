@@ -58,7 +58,17 @@ def events(type, parameter):
             if RELAY_MODE:
                 try:
                     payload_bytes = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'RES'
-                    success = device.send_p2p_payload(payload_bytes.hex())
+                    
+                    device.send_command("AT+PRECV=0")
+                    time.sleep(0.1)
+
+                    success = False
+                    for i in range(3):
+                        success = device.send_p2p_payload(payload_bytes.hex())
+                        if success:
+                            break
+                        time.sleep(0.2)
+                    device.send_command("AT+PRECV=65534")
 
                     if success:
                         print("RES berhasil dikirim ke Relay, hentikan fallback")
