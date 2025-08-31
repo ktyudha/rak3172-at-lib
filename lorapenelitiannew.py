@@ -38,7 +38,7 @@ last_direct_rx_time = 0  # timestamp terakhir menerima data langsung dari Node
 
 STATE_IDLE = 0
 STATE_WAIT_RELAY = 1
-set_state(STATE_IDLE)
+current_state = STATE_IDLE
 WAIT_RELAY_TIMEOUT = 30  # detik
 wait_relay_start = None
 
