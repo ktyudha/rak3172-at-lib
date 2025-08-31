@@ -4,10 +4,12 @@ import logging
 import signal
 import sys
 import json
+import queue
 from rak3172 import RAK3172
 from mqtt import MQTTClient
 from datetime import datetime
 
+send_queue = queue.Queue()
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -56,17 +58,8 @@ def events(type, parameter):
 
             global RELAY_MODE
             if RELAY_MODE:
-                try:
-                    payload_bytes = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'RES'
-                    
-                    success = send_payload_safe(payload_bytes.hex())
-
-                    if success:
-                        print("RES berhasil dikirim ke Relay, hentikan fallback")
-                    else:
-                        print("Gagal kirim RES ke Relay")
-                except Exception as e:
-                    print(f"Error saat kirim RES ke Relay: {e}")
+                payload_bytes = bytearray([SERVER_ADDRESS, RELAY_ADDRESS]) + b'RES'
+                send_queue.put(payload_bytes.hex())
                 RELAY_MODE = False
         
         # Optional: pastikan alamat tujuan adalah gateway
@@ -78,14 +71,22 @@ def events(type, parameter):
     else:
         print(f"EVENT - Unknown event {type}")
 
-def send_payload_safe(hex_payload):
-    device.send_command("AT+PRECV=0")
-    time.sleep(0.1)
-    success = device.send_p2p_payload(hex_payload)
-    time.sleep(0.1)
-    device.send_command("AT+PRECV=65534")
-    return success
-
+def send_payload_safe(hex_payload, retries=3):
+    for i in range(retries):
+        try:
+            device.send_command("AT+PRECV=0")
+            time.sleep(0.2)
+            success = device.send_p2p_payload(hex_payload)
+            if success:
+                print(f"TX sukses: {hex_payload}")
+                time.sleep(0.2)
+                device.send_command("AT+PRECV=65534")
+                return True
+        except Exception as e:
+            print(f"Retry {i+1} gagal: {e}")
+        time.sleep(0.5)
+    print(f"Gagal TX setelah {retries} percobaan")
+    return False
 
 def process_payload(fromAddr, toAddr, rssi, snr, payload):
     """Process the received payload"""
@@ -192,6 +193,12 @@ if __name__ == "__main__":
                     RELAY_MODE = True
                 else:
                     print("Gagal kirim REQ")
+
+            if not send_queue.empty():
+                hex_payload = send_queue.get()
+                print(f"Mengirim dari queue: {hex_payload}")
+                send_payload_safe(hex_payload)
+
             time.sleep(1)  # Kurangi penggunaan CPU
             
     except Exception as e:
