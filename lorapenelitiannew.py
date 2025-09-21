@@ -112,16 +112,18 @@ def process_payload(fromAddr, toAddr, rssi, snr, payload):
             print("Payload tidak lengkap")
             return
 
-        temperature = float(parts[0])
-        humidity = float(parts[1])
-        ph = float(parts[2])
-        nitrogen = int(parts[3])
-        phosphorus = int(parts[4])
-        potassium = int(parts[5])
+        index = float(parts[0])
+        temperature = float(parts[1])
+        humidity = float(parts[2])
+        ph = float(parts[3])
+        nitrogen = int(parts[4])
+        phosphorus = int(parts[5])
+        potassium = int(parts[6])
 
         mqtt_payload = {
                 "metadata": {"rssi": rssi, "snr": snr},
                 "uplink": {
+                    "index": index,
                     "temperature": temperature,
                     "humidity": humidity,
                     "ph": ph,
