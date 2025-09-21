@@ -20,7 +20,7 @@ CLIENT_ADDRESS = 1
 RELAY_ADDRESS = 2
 SERVER_ADDRESS = 3
 
-MQTT_BROKER_WS = "mqtt.ktyudha.site"
+MQTT_BROKER_WS = "mqtt.inb.my.id"
 MQTT_PORT_WS = 80  # 80 untuk ws://, 443 untuk wss://
 MQTT_TOPIC = "v1/devices/uplink-p2p"
 MQTT_USERNAME = "barjon"
