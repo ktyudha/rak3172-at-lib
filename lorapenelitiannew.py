@@ -107,8 +107,8 @@ def process_payload(fromAddr, toAddr, rssi, snr, payload):
     """Process the received payload"""
 
     try:
-        parts = payload.split(";")[:6]
-        if len(parts) < 6 :
+        parts = payload.split(";")[:7]
+        if len(parts) < 7 :
             print("Payload tidak lengkap")
             return
 
